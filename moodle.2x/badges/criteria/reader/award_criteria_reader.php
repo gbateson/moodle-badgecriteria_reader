@@ -62,6 +62,9 @@ class award_criteria_reader extends award_criteria {
             self::ENROLMENT_TYPE_COURSE => get_string('courseenrolment', $plugin)
         );
 
+        $difficulties = range(0,15);
+        $publishers = range(0,15);
+        $genres = range(0,15);
 
         //-----------------------------------------------------------------------------
         $name = 'readinggoal';
@@ -114,14 +117,36 @@ class award_criteria_reader extends award_criteria {
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, self::ENROLMENT_TYPE_SITE);
 
-        $this->add_section_filters($mform, $textoptions, $plugin, 'username');
-
+        //-----------------------------------------------------------------------------
         $name = 'bookfilters';
-        $mform->addElement('header', $name, get_string($name, $plugin));
+        $label = get_string($name, $plugin);
+        $mform->addElement('header', $name, $label);
+        //-----------------------------------------------------------------------------
 
+        $name = 'difficulties';
+        $label = get_string($name, $plugin);
+        $mform->addElement('select', $name, $label, $difficulties);
+        $mform->addHelpButton($name, $name, $plugin);
+        $mform->setType($name, PARAM_TEXT);
+
+        $name = 'publishers';
+        $label = get_string($name, $plugin);
+        $mform->addElement('select', $name, $label, $publishers);
+        $mform->addHelpButton($name, $name, $plugin);
+        $mform->setType($name, PARAM_TEXT);
+
+        $name = 'genres';
+        $label = get_string($name, $plugin);
+        $mform->addElement('select', $name, $label, $genres);
+        $mform->addHelpButton($name, $name, $plugin);
+        $mform->setType($name, PARAM_TEXT);
+
+        //-----------------------------------------------------------------------------
+        $this->add_section_filters($mform, $textoptions, $plugin, 'username');
         $this->add_section_filters($mform, $textoptions, $plugin, 'activity');
         $this->add_section_filters($mform, $textoptions, $plugin, 'course');
         $this->add_section_filters($mform, $textoptions, $plugin, 'category');
+        //-----------------------------------------------------------------------------
 
         return array($none, get_string('noparamstoadd', 'badges'));
     }
@@ -139,13 +164,13 @@ class award_criteria_reader extends award_criteria {
         $label = get_string('include', $plugin);
         $mform->addElement('text', $include, $label, $textoptions);
         $mform->addHelpButton($include, 'include', $plugin);
-        $mform->setType($include, PARAM_INT);
+        $mform->setType($include, PARAM_TEXT);
 
         $exclude = $name.'exclude';
         $label = get_string('exclude', $plugin);
         $mform->addElement('text', $exclude, $label, $textoptions);
         $mform->addHelpButton($exclude, 'exclude', $plugin);
-        $mform->setType($exclude, PARAM_INT);
+        $mform->setType($exclude, PARAM_TEXT);
     }
 
     /**
