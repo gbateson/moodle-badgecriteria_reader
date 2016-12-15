@@ -62,9 +62,19 @@ class award_criteria_reader extends award_criteria {
             self::ENROLMENT_TYPE_COURSE => get_string('courseenrolment', $plugin)
         );
 
-        $difficulties = range(0,15);
-        $publishers = range(0,15);
-        $genres = range(0,15);
+        $difficulties = range(1, 15);
+        if ($publishers = $DB->get_records_sql("SELECT DISTINCT publisher FROM {reader_books} WHERE publisher <> ?", array('Extra points'))) {
+            $publishers = array_keys($publishers);
+            $publishers = array_combine($publishers, $publishers);
+        } else {
+            $publishers = array();
+        }
+        if ($genres = $DB->get_records_sql("SELECT DISTINCT genre FROM {reader_books} WHERE genre <> ?", array(''))) {
+            $genres = array_keys($genres);
+            $genres = array_combine($genres, $genres);
+        } else {
+            $genres = array();
+        }
 
         //-----------------------------------------------------------------------------
         $name = 'readinggoal';
@@ -123,23 +133,27 @@ class award_criteria_reader extends award_criteria {
         $mform->addElement('header', $name, $label);
         //-----------------------------------------------------------------------------
 
+        $name = 'publishers';
+        $label = get_string($name, $plugin);
+
+        $mform->addElement('select', $name, $label, $publishers);
+        $mform->addHelpButton($name, $name, $plugin);
+        $mform->setType($name, PARAM_TEXT);
+
         $name = 'difficulties';
         $label = get_string($name, $plugin);
         $mform->addElement('select', $name, $label, $difficulties);
         $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_TEXT);
-
-        $name = 'publishers';
-        $label = get_string($name, $plugin);
-        $mform->addElement('select', $name, $label, $publishers);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_TEXT);
+        $mform->setType($name, PARAM_INT);
 
         $name = 'genres';
         $label = get_string($name, $plugin);
         $mform->addElement('select', $name, $label, $genres);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_TEXT);
+
+        $this->add_field_include_exclude($mform, $textoptions, $plugin, 'book', 'include');
+        $this->add_field_include_exclude($mform, $textoptions, $plugin, 'book', 'exclude');
 
         //-----------------------------------------------------------------------------
         $this->add_section_filters($mform, $textoptions, $plugin, 'username');
@@ -159,18 +173,21 @@ class award_criteria_reader extends award_criteria {
     protected function add_section_filters($mform, $textoptions, $plugin, $name) {
         $header = $name.'filters';
         $mform->addElement('header', $header, get_string($header, $plugin));
+        $this->add_field_include_exclude($mform, $textoptions, $plugin, $name, 'include');
+        $this->add_field_include_exclude($mform, $textoptions, $plugin, $name, 'exclude');
+    }
 
-        $include = $name.'include';
-        $label = get_string('include', $plugin);
-        $mform->addElement('text', $include, $label, $textoptions);
-        $mform->addHelpButton($include, 'include', $plugin);
-        $mform->setType($include, PARAM_TEXT);
-
-        $exclude = $name.'exclude';
-        $label = get_string('exclude', $plugin);
-        $mform->addElement('text', $exclude, $label, $textoptions);
-        $mform->addHelpButton($exclude, 'exclude', $plugin);
-        $mform->setType($exclude, PARAM_TEXT);
+    /**
+     * add an include/exclude field to the $mform
+     *
+     * @return string
+     */
+    protected function add_field_include_exclude($mform, $textoptions, $plugin, $name, $type) {
+        $name = $name.$type;
+        $label = get_string($type, $plugin);
+        $mform->addElement('text', $name, $label, $textoptions);
+        $mform->addHelpButton($name, $type, $plugin);
+        $mform->setType($name, PARAM_TEXT);
     }
 
     /**
