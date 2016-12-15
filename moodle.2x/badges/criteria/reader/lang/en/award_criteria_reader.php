@@ -23,6 +23,13 @@ $string['enrolmenttype_help'] = 'The type of enrolment to which the relative sta
 $string['siteenrolment'] = 'Site enrolment';
 $string['courseenrolment'] = 'Course enrolment';
 
+$string['difficulties'] = 'Reading difficulty';
+$string['difficulties_help'] = 'If any values are selected here, the reading goal will be limited to books of the selected reading difficulty levels. If no values are selected here, books of ALL levels of difficulty will be contribute to the reading total.';
+$string['publishers'] = 'Publishers';
+$string['publishers_help'] = 'If any values are selected here, the reading goal will be limited to books by the selected publishers. If no values are selected here, books by ALL publishers will be contribute to the reading total.';
+$string['genres'] = 'Genres';
+$string['genres_help'] = 'If any values are selected here, the reading goal will be limited to books of the selected genre. If no values are selected here, books of ALL genres will be contribute to the reading total.';
+
 $string['activityfilters'] = 'Activity name filters';
 $string['bookfilters'] = 'Book filters';
 $string['categoryfilters'] = 'Course category filters';
