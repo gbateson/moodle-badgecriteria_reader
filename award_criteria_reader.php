@@ -25,7 +25,7 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
-require_once($CFG->dirroot . '/user/lib.php');
+require_once($CFG->dirroot . '/mod/reader/renderer.php');
 
 /**
  * Reader completion badge award criteria
@@ -40,6 +40,8 @@ class award_criteria_reader extends award_criteria {
     public $optional_params = array();
 
     const TEXT_NUM_SIZE = 10;
+    const MULTI_SELECT_SIZE = 5;
+    const MAX_READING_LEVEL = 15;
     const ENROLMENT_TYPE_SITE = 0;
     const ENROLMENT_TYPE_COURSE = 1;
 
@@ -56,25 +58,29 @@ class award_criteria_reader extends award_criteria {
 
         $dateoptions = array('optional' => true);
         $textoptions = array('size' => self::TEXT_NUM_SIZE);
+        $selectoptions = array('multiple' => 'multiple', 'size' => self::MULTI_SELECT_SIZE);
         $durationoptions = array('optional' => true, 'defaultunit' => 86400);
         $enrolmentoptions = array(
-            self::ENROLMENT_TYPE_SITE => get_string('siteenrolment',   $plugin),
+            self::ENROLMENT_TYPE_SITE => get_string('siteenrolment', $plugin),
             self::ENROLMENT_TYPE_COURSE => get_string('courseenrolment', $plugin)
         );
 
-        $difficulties = range(1, 15);
-        if ($publishers = $DB->get_records_sql("SELECT DISTINCT publisher FROM {reader_books} WHERE publisher <> ?", array('Extra points'))) {
+        $difficulties = array();
+        for ($i=0; $i<=self::MAX_READING_LEVEL; $i++) {
+            if ($i==0) {
+                $difficulties[$i] = get_string('anydifficulty', $plugin);
+            } else {
+                $difficulties[$i] = get_string('shortdifficulty', $plugin, $i);
+            }
+        }
+        if ($publishers = $DB->get_records_sql('SELECT DISTINCT publisher FROM {reader_books} WHERE publisher <> ?', array('Extra points'))) {
             $publishers = array_keys($publishers);
             $publishers = array_combine($publishers, $publishers);
         } else {
             $publishers = array();
         }
-        if ($genres = $DB->get_records_sql("SELECT DISTINCT genre FROM {reader_books} WHERE genre <> ?", array(''))) {
-            $genres = array_keys($genres);
-            $genres = array_combine($genres, $genres);
-        } else {
-            $genres = array();
-        }
+        $publishers = array_merge(array('' => get_string('anypublisher', $plugin)), $publishers);
+        $genres = mod_reader_renderer::valid_genres();
 
         //-----------------------------------------------------------------------------
         $name = 'readinggoal';
@@ -133,22 +139,33 @@ class award_criteria_reader extends award_criteria {
         $mform->addElement('header', $name, $label);
         //-----------------------------------------------------------------------------
 
+        $name = 'minwordcount';
+        $label = get_string($name, $plugin);
+        $mform->addElement('text', $name, $label, $textoptions);
+        $mform->addHelpButton($name, $name, $plugin);
+        $mform->setType($name, PARAM_INT);
+
+        $name = 'maxwordcount';
+        $label = get_string($name, $plugin);
+        $mform->addElement('text', $name, $label, $textoptions);
+        $mform->addHelpButton($name, $name, $plugin);
+        $mform->setType($name, PARAM_INT);
+
         $name = 'publishers';
         $label = get_string($name, $plugin);
-
-        $mform->addElement('select', $name, $label, $publishers);
+        $mform->addElement('select', $name, $label, $publishers, $selectoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_TEXT);
 
         $name = 'difficulties';
         $label = get_string($name, $plugin);
-        $mform->addElement('select', $name, $label, $difficulties);
+        $mform->addElement('select', $name, $label, $difficulties, $selectoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_INT);
 
         $name = 'genres';
         $label = get_string($name, $plugin);
-        $mform->addElement('select', $name, $label, $genres);
+        $mform->addElement('select', $name, $label, $genres, $selectoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_TEXT);
 
