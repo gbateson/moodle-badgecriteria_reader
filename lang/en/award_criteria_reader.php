@@ -4,10 +4,9 @@
  * Strings for Reader badge critera plugin
  */
 
-$string['criteria_10'] = 'Reading achievment badge';
-$string['criteria_10_help'] = 'Allows a badge to be awarded to users who achieve a specified reading goal. Restrictions such as start and end dates, as well as publisher and reading level can also be specified.';
+$string['criteria_10'] = 'Reading achievment';
+$string['criteria_10_help'] = 'This criteria allows a badge to be awarded to users who achieve a specified reading goal. Restrictions on start and end dates, as well as on publisher and reading level can also be specified.';
 
-$string['readinggoal'] = 'Reading goal';
 $string['minreadinggoal'] = 'Minimum reading goal';
 $string['minreadinggoal_help'] = 'The minimum number of words that must be read in order to earn this badge.';
 $string['maxreadinggoal'] = 'Maximum reading goal';

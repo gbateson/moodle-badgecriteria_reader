@@ -83,9 +83,12 @@ class award_criteria_reader extends award_criteria {
         $genres = mod_reader_renderer::valid_genres();
 
         //-----------------------------------------------------------------------------
-        $name = 'readinggoal';
-        $label = get_string($name, $plugin);
+        // this header must be called "first_header" so that error messages
+        // can be added to the top of the form by the parent class
+        $name = 'first_header';
+        $label = $this->get_title();
         $mform->addElement('header', $name, $label);
+        $mform->addHelpButton($name, 'criteria_' . $this->criteriatype, 'badges');
         //-----------------------------------------------------------------------------
 
         $name = 'minreadinggoal';
