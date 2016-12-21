@@ -36,8 +36,16 @@ class award_criteria_reader extends award_criteria {
     /* @var int Criteria [BADGE_CRITERIA_TYPE_READER] */
     public $criteriatype = BADGE_CRITERIA_TYPE_READER;
 
-    public $required_param = 'field';
-    public $optional_params = array();
+    public $required_param = 'readinggoal';
+    public $optional_params = array('absolutetime_start', 'absolutetime_end',
+                                    'relativetime_start', 'relativetime_end', 'enrolmenttype',
+                                    'wordcount_min',    'wordcount_max',
+                                    'publishers',      'difficulties',  'genres',
+                                    'bookinclude',     'bookexclude',
+                                    'usernameinclude', 'usernameexclude',
+                                    'activityinclude', 'activityexclude',
+                                    'courseinclude',   'courseexclude',
+                                    'categoryinclude', 'categoryexclude');
 
     const TEXT_NUM_SIZE = 10;
     const MULTI_SELECT_SIZE = 5;
@@ -61,16 +69,16 @@ class award_criteria_reader extends award_criteria {
         $selectoptions = array('multiple' => 'multiple', 'size' => self::MULTI_SELECT_SIZE);
         $durationoptions = array('optional' => true, 'defaultunit' => 86400);
         $enrolmentoptions = array(
-            self::ENROLMENT_TYPE_SITE => get_string('siteenrolment', $plugin),
-            self::ENROLMENT_TYPE_COURSE => get_string('courseenrolment', $plugin)
+            self::ENROLMENT_TYPE_SITE => get_string('enrolmenttype_site', $plugin),
+            self::ENROLMENT_TYPE_COURSE => get_string('enrolmenttype_course', $plugin)
         );
 
         $difficulties = array();
         for ($i=0; $i<=self::MAX_READING_LEVEL; $i++) {
             if ($i==0) {
-                $difficulties[$i] = get_string('anydifficulty', $plugin);
+                $difficulties[$i] = get_string('difficulty_any', $plugin);
             } else {
-                $difficulties[$i] = get_string('shortdifficulty', $plugin, $i);
+                $difficulties[$i] = get_string('difficulty_short', $plugin, $i);
             }
         }
         if ($publishers = $DB->get_records_sql('SELECT DISTINCT publisher FROM {reader_books} WHERE publisher <> ?', array('Extra points'))) {
@@ -79,7 +87,7 @@ class award_criteria_reader extends award_criteria {
         } else {
             $publishers = array();
         }
-        $publishers = array_merge(array('' => get_string('anypublisher', $plugin)), $publishers);
+        $publishers = array_merge(array('' => get_string('publisher_any', $plugin)), $publishers);
         $genres = mod_reader_renderer::valid_genres();
 
         //-----------------------------------------------------------------------------
@@ -91,13 +99,13 @@ class award_criteria_reader extends award_criteria {
         $mform->addHelpButton($name, 'criteria_' . $this->criteriatype, 'badges');
         //-----------------------------------------------------------------------------
 
-        $name = 'minreadinggoal';
+        $name = 'readinggoal_min';
         $label = get_string($name, $plugin);
         $mform->addElement('text', $name, $label, $textoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_INT);
 
-        $name = 'maxreadinggoal';
+        $name = 'readinggoal_max';
         $label = get_string($name, $plugin);
         $mform->addElement('text', $name, $label, $textoptions);
         $mform->addHelpButton($name, $name, $plugin);
@@ -109,22 +117,22 @@ class award_criteria_reader extends award_criteria {
         $mform->addElement('header', $name, $label);
         //-----------------------------------------------------------------------------
 
-        $name = 'absolutetimestart';
+        $name = 'absolutetime_start';
         $label = get_string($name, $plugin);
         $mform->addElement('date_time_selector', $name, $label, $dateoptions);
         $mform->addHelpButton($name, $name, $plugin);
 
-        $name = 'absolutetimeend';
+        $name = 'absolutetime_end';
         $label = get_string($name, $plugin);
         $mform->addElement('date_time_selector', $name, $label, $dateoptions);
         $mform->addHelpButton($name, $name, $plugin);
 
-        $name = 'relativetimestart';
+        $name = 'relativetime_start';
         $label = get_string($name, $plugin);
         $mform->addElement('duration', $name, $label, $durationoptions);
         $mform->addHelpButton($name, $name, $plugin);
 
-        $name = 'relativetimeend';
+        $name = 'relativetime_end';
         $label = get_string($name, $plugin);
         $mform->addElement('duration', $name, $label, $durationoptions);
         $mform->addHelpButton($name, $name, $plugin);
@@ -142,13 +150,13 @@ class award_criteria_reader extends award_criteria {
         $mform->addElement('header', $name, $label);
         //-----------------------------------------------------------------------------
 
-        $name = 'minwordcount';
+        $name = 'wordcount_min';
         $label = get_string($name, $plugin);
         $mform->addElement('text', $name, $label, $textoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_INT);
 
-        $name = 'maxwordcount';
+        $name = 'wordcount_max';
         $label = get_string($name, $plugin);
         $mform->addElement('text', $name, $label, $textoptions);
         $mform->addHelpButton($name, $name, $plugin);
@@ -216,25 +224,26 @@ class award_criteria_reader extends award_criteria {
      * @return string
      */
     public function get_details($short = '') {
-        global $DB, $OUTPUT;
-        $output = array();
-        foreach ($this->params as $p) {
-            if (is_numeric($p['field'])) {
-                $str = $DB->get_field('user_info_field', 'name', array('id' => $p['field']));
-            } else {
-                $str = get_user_field_name($p['field']);
-            }
-            if (!$str) {
-                $output[] = $OUTPUT->error_text(get_string('error:nosuchfield', 'badges'));
-            } else {
-                $output[] = $str;
+        $details = array();
+        $strman = get_string_manager();
+        $plugin = 'badges'; // badgecriteria_reader
+        foreach ($this->params as $type => $values) {
+            foreach ($values as $name => $value) {
+                $str = $name.'_'.$type; // e.g. readinggoal_min
+                if ($strman->string_exists($str, $plugin)) {
+                    $str = $strman->get_string($str, $plugin);
+                }
+                switch ($name) {
+                    case 'readinggoal': $value = number_format($value); break;
+                    case 'absolutedate': $value = userdate($value); break;
+                }
+                $details[] = $str.': '.$value;
             }
         }
-
         if ($short) {
-            return implode(', ', $output);
+            return implode(', ', $details);
         } else {
-            return html_writer::alist($output, array(), 'ul');
+            return html_writer::alist($details, array(), 'ul');
         }
     }
 

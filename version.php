@@ -30,4 +30,4 @@ $plugin->component = 'badgecriteria_reader';
 $plugin->maturity  = MATURITY_ALPHA; // ALPHA=50, BETA=100, RC=150, STABLE=200
 $plugin->requires  = 2012062500;     // Moodle 2.3
 $plugin->version   = 2016121601;
-$plugin->release   = '2016-12-16 (01)';
+$plugin->release   = '2016-12-16 (02)';
