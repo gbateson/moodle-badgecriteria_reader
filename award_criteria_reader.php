@@ -36,22 +36,48 @@ class award_criteria_reader extends award_criteria {
     /* @var int Criteria [BADGE_CRITERIA_TYPE_READER] */
     public $criteriatype = BADGE_CRITERIA_TYPE_READER;
 
-    public $required_param = 'readinggoal';
-    public $optional_params = array('absolutetime_start', 'absolutetime_end',
-                                    'relativetime_start', 'relativetime_end', 'enrolmenttype',
-                                    'wordcount_min',    'wordcount_max',
-                                    'publishers',      'difficulties',  'genres',
-                                    'bookinclude',     'bookexclude',
-                                    'usernameinclude', 'usernameexclude',
-                                    'activityinclude', 'activityexclude',
-                                    'courseinclude',   'courseexclude',
-                                    'categoryinclude', 'categoryexclude');
+    public $required_param = 'readinggoal';         // "min" and "max"
+    public $optional_params = array('fixedtime',    // "start" and "end"
+                                    'relativetime', // "start" and "end"
+                                    'enrolment',    // "type'
+                                    'wordcount',    // "min" and "max"
+                                    'publishers',   // "list"
+                                    'difficulties', // "list"
+                                    'genres',       // "list"
+                                    'book',         // "include" and "exclude"
+                                    'username',     // "include" and "exclude"
+                                    'activity',     // "include" and "exclude"
+                                    'course',       // "include" and "exclude"
+                                    'category');    // "include" and "exclude"
+
+    protected $fixmonth = true;
+    protected $fixday   = true;
+    protected $fixhour  = true;
+
+    protected $fixyearchar  = '';
+    protected $fixmonthchar = '';
+    protected $fixdaychar   = '';
+
+    protected $customdatefmt = '%Y %b %d (%a) %H:%M';
+    protected $moodledatefmt = 'strftimerecent';
 
     const TEXT_NUM_SIZE = 10;
     const MULTI_SELECT_SIZE = 5;
     const MAX_READING_LEVEL = 15;
-    const ENROLMENT_TYPE_SITE = 0;
-    const ENROLMENT_TYPE_COURSE = 1;
+    const ENROLMENT_TYPE_SITE = 1;
+    const ENROLMENT_TYPE_COURSE = 2;
+
+    /*
+     * standard contructor modified to expand multiselect elements to arrays
+     */
+    public function __construct($params) {
+        parent::__construct($params);
+        foreach ($this->get_multiselect_element_names() as $name) {
+            if (isset($this->params[$name]) && is_string($this->params[$name])) {
+                $this->params[$name] = explode(',', $this->params[$name]);
+            }
+        }
+    }
 
     /**
      * Add appropriate new criteria options to the form
@@ -68,10 +94,7 @@ class award_criteria_reader extends award_criteria {
         $textoptions = array('size' => self::TEXT_NUM_SIZE);
         $selectoptions = array('multiple' => 'multiple', 'size' => self::MULTI_SELECT_SIZE);
         $durationoptions = array('optional' => true, 'defaultunit' => 86400);
-        $enrolmentoptions = array(
-            self::ENROLMENT_TYPE_SITE => get_string('enrolmenttype_site', $plugin),
-            self::ENROLMENT_TYPE_COURSE => get_string('enrolmenttype_course', $plugin)
-        );
+        $enrolmentoptions = $this->get_enrolment_types($plugin);
 
         $difficulties = array();
         for ($i=0; $i<=self::MAX_READING_LEVEL; $i++) {
@@ -104,12 +127,14 @@ class award_criteria_reader extends award_criteria {
         $mform->addElement('text', $name, $label, $textoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_INT);
+        $this->set_default($mform, 'readinggoal', 'min');
 
         $name = 'readinggoal_max';
         $label = get_string($name, $plugin);
         $mform->addElement('text', $name, $label, $textoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_INT);
+        $this->set_default($mform, 'readinggoal', 'max');
 
         //-----------------------------------------------------------------------------
         $name = 'timing';
@@ -117,32 +142,36 @@ class award_criteria_reader extends award_criteria {
         $mform->addElement('header', $name, $label);
         //-----------------------------------------------------------------------------
 
-        $name = 'absolutetime_start';
+        $name = 'fixedtime_start';
         $label = get_string($name, $plugin);
         $mform->addElement('date_time_selector', $name, $label, $dateoptions);
         $mform->addHelpButton($name, $name, $plugin);
+        $this->set_default($mform, 'fixedtime', 'start');
 
-        $name = 'absolutetime_end';
+        $name = 'fixedtime_end';
         $label = get_string($name, $plugin);
         $mform->addElement('date_time_selector', $name, $label, $dateoptions);
         $mform->addHelpButton($name, $name, $plugin);
+        $this->set_default($mform, 'fixedtime', 'end');
+
+        $name = 'enrolment_type';
+        $label = get_string($name, $plugin);
+        $mform->addElement('select', $name, $label, $enrolmentoptions);
+        $mform->addHelpButton($name, $name, $plugin);
+        $mform->setType($name, PARAM_INT);
+        $this->set_default($mform, 'enrolment', 'type');
 
         $name = 'relativetime_start';
         $label = get_string($name, $plugin);
         $mform->addElement('duration', $name, $label, $durationoptions);
         $mform->addHelpButton($name, $name, $plugin);
+        $this->set_default($mform, 'relativetime', 'start');
 
         $name = 'relativetime_end';
         $label = get_string($name, $plugin);
         $mform->addElement('duration', $name, $label, $durationoptions);
         $mform->addHelpButton($name, $name, $plugin);
-
-        $name = 'enrolmenttype';
-        $label = get_string($name, $plugin);
-        $mform->addElement('select', $name, $label, $enrolmentoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, self::ENROLMENT_TYPE_SITE);
+        $this->set_default($mform, 'relativetime', 'end');
 
         //-----------------------------------------------------------------------------
         $name = 'bookfilters';
@@ -155,30 +184,35 @@ class award_criteria_reader extends award_criteria {
         $mform->addElement('text', $name, $label, $textoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_INT);
+        $this->set_default($mform, 'wordcount', 'min');
 
         $name = 'wordcount_max';
         $label = get_string($name, $plugin);
         $mform->addElement('text', $name, $label, $textoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_INT);
+        $this->set_default($mform, 'wordcount', 'max');
 
-        $name = 'publishers';
+        $name = 'publishers_list';
         $label = get_string($name, $plugin);
         $mform->addElement('select', $name, $label, $publishers, $selectoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_TEXT);
+        $this->set_default($mform, 'publishers', 'list');
 
-        $name = 'difficulties';
+        $name = 'difficulties_list';
         $label = get_string($name, $plugin);
         $mform->addElement('select', $name, $label, $difficulties, $selectoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_INT);
+        $this->set_default($mform, 'difficulties', 'list');
 
-        $name = 'genres';
+        $name = 'genres_list';
         $label = get_string($name, $plugin);
         $mform->addElement('select', $name, $label, $genres, $selectoptions);
         $mform->addHelpButton($name, $name, $plugin);
         $mform->setType($name, PARAM_TEXT);
+        $this->set_default($mform, 'genres', 'list');
 
         $this->add_field_include_exclude($mform, $textoptions, $plugin, 'book', 'include');
         $this->add_field_include_exclude($mform, $textoptions, $plugin, 'book', 'exclude');
@@ -191,6 +225,51 @@ class award_criteria_reader extends award_criteria {
         //-----------------------------------------------------------------------------
 
         return array($none, get_string('noparamstoadd', 'badges'));
+    }
+
+    /**
+     * set a default value for an $mform element
+     *
+     * @param string $name of $mform element, e.g. "readinggoal"
+     * @param string $type of $mform element, e.g. "min" or "max"
+     * @return string
+     */
+    protected function set_default($mform, $name, $type) {
+        if (array_key_exists($type, $this->params)) {
+            if (array_key_exists($name, $this->params[$type])) {
+                $mform->setDefault($name.'_'.$type, $this->params[$type][$name]);
+            }
+        }
+    }
+
+    /**
+     * Get names of multi-select form elements.
+     *
+     * @param array $params Values from the form or any other array.
+     */
+    protected function get_multiselect_element_names() {
+        return array('publishers_list', 'difficulties_list', 'genres_list');
+    }
+
+    /**
+     * Get array of enrolment types
+     *
+     * @param string  $plugin name
+     * @param integer $type (optional, default=null)
+     * @return string
+     */
+    protected function get_enrolment_types($plugin, $type=null) {
+        $types = array(
+            self::ENROLMENT_TYPE_SITE => get_string('enrolment_type_site', $plugin),
+            self::ENROLMENT_TYPE_COURSE => get_string('enrolment_type_course', $plugin)
+        );
+        if ($type===null) {
+            return $types;
+        }
+        if (array_key_exists($type, $types)) {
+            return $types[$type];
+        }
+        return 'oops - '.$type; // shouldn't happen !!
     }
 
     /**
@@ -211,11 +290,12 @@ class award_criteria_reader extends award_criteria {
      * @return string
      */
     protected function add_field_include_exclude($mform, $textoptions, $plugin, $name, $type) {
-        $name = $name.$type;
+        $elementname = $name.'_'.$type;
         $label = get_string($type, $plugin);
-        $mform->addElement('text', $name, $label, $textoptions);
-        $mform->addHelpButton($name, $type, $plugin);
-        $mform->setType($name, PARAM_TEXT);
+        $mform->addElement('text', $elementname, $label, $textoptions);
+        $mform->addHelpButton($elementname, $type, $plugin);
+        $mform->setType($elementname, PARAM_TEXT);
+        $this->set_default($mform, $name, $type);
     }
 
     /**
@@ -225,26 +305,284 @@ class award_criteria_reader extends award_criteria {
      */
     public function get_details($short = '') {
         $details = array();
-        $strman = get_string_manager();
         $plugin = 'badges'; // badgecriteria_reader
+
+        // format individual criteria
+        $params = array();
         foreach ($this->params as $type => $values) {
             foreach ($values as $name => $value) {
-                $str = $name.'_'.$type; // e.g. readinggoal_min
-                if ($strman->string_exists($str, $plugin)) {
-                    $str = $strman->get_string($str, $plugin);
+                if ($value) {
+                    if (empty($params[$name])) {
+                        $params[$name] = array();
+                    }
+                    switch ($name) {
+                        case 'readinggoal':
+                        case 'wordcount':
+                            $value = number_format($value);
+                            break;
+                        case 'relativetime':
+                            $value = format_time($value);
+                            break;
+                        case 'enrolment':
+                            $value = $this->get_enrolment_types($plugin, $value);
+                            break;
+                    }
+                    $params[$name][$type] = $value;
                 }
-                switch ($name) {
-                    case 'readinggoal': $value = number_format($value); break;
-                    case 'absolutedate': $value = userdate($value); break;
-                }
-                $details[] = $str.': '.$value;
             }
         }
+
+        // combine criteria groups
+        $this->format_params_range($params, $plugin, 'readinggoal',  'min', 'max');
+        $this->format_params_range($params, $plugin, 'wordcount',    'min', 'max');
+        $this->format_date_range($params, $plugin, 'fixedtime',    'start', 'end');
+        $this->format_params_range($params, $plugin, 'relativetime', 'start', 'end');
+        $this->format_params_range($params, $plugin, 'book',     'include', 'exclude');
+        $this->format_params_range($params, $plugin, 'username', 'include', 'exclude');
+        $this->format_params_range($params, $plugin, 'activity', 'include', 'exclude');
+        $this->format_params_range($params, $plugin, 'course',   'include', 'exclude');
+        $this->format_params_range($params, $plugin, 'category', 'include', 'exclude');
+
+        $strman = get_string_manager();
+        foreach ($params as $name => $types) {
+            foreach ($types as $type => $value) {
+                $str = $name.'_'.$type;
+                if ($strman->string_exists($str, $plugin)) {
+                    $str = $strman->get_string($str, $plugin, $value);
+                }
+                if ($type=='range') {
+                    $details[] = $str;
+                } else {
+                    $details[] = $str.': '.$value;
+                }
+            }
+        }
+
         if ($short) {
             return implode(', ', $details);
         } else {
             return html_writer::alist($details, array(), 'ul');
         }
+    }
+
+    /**
+     * Formet a parameter range, such as readinggoal_min - readinggoal_max
+     *
+     * @param array  $params
+     * @param string $plugin
+     * @param string $name
+     * @param string $type1
+     * @param string $type2
+     */
+    protected function format_params_range(&$params, $plugin, $name, $type1, $type2) {
+        if (array_key_exists($name, $params)) {
+            if (array_key_exists($type1, $params[$name]) && array_key_exists($type2, $params[$name])) {
+                $params[$name]['range'] = (object)array(
+                    $type1 => $params[$name][$type1],
+                    $type2 => $params[$name][$type2]
+                );
+                unset($params[$name][$type1]);
+                unset($params[$name][$type2]);
+            }
+        }
+    }
+
+   /**
+     * format_date_range
+     *
+     * @params string  $dateformat
+     * @params integer $timenow
+     * @params string  $timestart
+     * @params string  $timefinish
+     * @return array
+     */
+    protected function format_date_range(&$params, $plugin, $name, $type1, $type2) {
+
+        $time1 = 0;
+        $time2 = 0;
+        $dateformat = $this->customdatefmt;
+
+        if (array_key_exists($name, $params)) {
+
+            if (array_key_exists($type1, $params[$name])) {
+                $time1 = $params[$name][$type1];
+                $time1 = preg_replace('/[^0-9]+/', '', $time1);
+            }
+            if (array_key_exists($type2, $params[$name])) {
+                $time2 = $params[$name][$type2];
+                $time2 = preg_replace('/[^0-9]+/', '', $time2);
+            }
+
+            $removetime1 = ($time1 && (strftime('%H:%M', $time1)=='00:00'));
+            $removetime2 = ($time2 && (strftime('%H:%M', $time2)=='23:55'));
+            $removetime = ($removetime1 && $removetime2);
+            $removedate = false;
+
+            $date = '';
+            if ($time1 && $time2) {
+                if (($time2 - $time1) < DAYSECS) {
+                    // the dates are less than 24 hours apart, so don't remove times ...
+                    $removetime = false;
+                    // ... but remove the finish date ;-)
+                    $removedate = true;
+                }
+                $time1 = $this->userdate($time1, $dateformat, $removetime);
+                $time2 = $this->userdate($time2, $dateformat, $removetime, $removedate);
+            } else if ($time1) {
+                $time1 = $this->userdate($time1, $dateformat, $removetime1);
+            } else if ($time2) {
+                $time2 = $this->userdate($time2, $dateformat, $removetime2);
+            }
+
+            $params[$name][$type1] = $time1;
+            $params[$name][$type2] = $time2;
+        }
+
+        $this->format_params_range($params, $plugin, $name, $type1, $type2);
+    }
+
+    /**
+     * userdate
+     *
+     * @param integer $date
+     * @param string  $format
+     * @param boolean $removetime
+     * @param boolean $removedate (optional, default = false)
+     * @return string representation of $date
+     */
+    protected function userdate($date, $format, $removetime, $removedate=false) {
+
+        $current_language = substr(current_language(), 0, 2);
+
+        if ($removetime) {
+            // http://php.net/manual/en/function.strftime.php
+            $search = '/[ :,\-\.\/]*[\[\{\(]*?%[HkIlMpPrRSTX][\)\}\]]?/';
+            $format = preg_replace($search, '', $format);
+        }
+
+        if ($removedate) {
+            // http://php.net/manual/en/function.strftime.php
+            $search = '/[ :,\-\.\/]*[\[\{\(]*?%[AadejuwbBhmCgGyY][\)\}\]]?/';
+            $format = preg_replace($search, '', $format);
+        }
+
+        // set the $year, $month and $day characters for CJK languages
+        list($year, $month, $day) = $this->get_date_chars();
+
+        // add year, month and day characters for CJK languages
+        if ($this->fixyearchar || $this->fixmonthchar || $this->fixdaychar) {
+            $replace = array();
+            if ($this->fixyearchar) {
+                $replace['%y'] = '%y'.$year;
+                $replace['%Y'] = '%Y'.$year;
+            }
+            if ($this->fixmonthchar) {
+                $replace['%b'] = '%b'.$month;
+                $replace['%h'] = '%h'.$month;
+            }
+            if ($this->fixdaychar) {
+                $replace['%d'] = '%d'.$day;
+            }
+            $format = strtr($format, $replace);
+        }
+
+        if ($fixmonth = ($this->fixmonth && is_numeric(strpos($format, '%m')))) {
+            $format = str_replace('%m', 'MM', $format);
+        }
+        if ($fixday = ($this->fixday && is_numeric(strpos($format, '%d')))) {
+            $format = str_replace('%d', 'DD', $format);
+        }
+        if ($fixhour = ($this->fixhour && is_numeric(strpos($format, '%I')))) {
+            $format = str_replace('%I', 'II', $format);
+        }
+
+        $userdate = userdate($date, $format, 99, false, false);
+
+        if ($fixmonth || $fixday || $fixhour) {
+            $search = array(' 0', ' ');
+            $replace = array();
+            if ($fixmonth) {
+                $month = strftime(' %m', $date);
+                $month = str_replace($search, '', $month);
+                $replace['MM'] = ltrim($month);
+            }
+            if ($fixday) {
+                if ($current_language=='en') {
+                    $day = date(' jS', $date);
+                } else {
+                    $day = strftime(' %d', $date);
+                    $day = str_replace($search, '', $day);
+                }
+                $replace['DD'] = ltrim($day);
+            }
+            if ($fixhour) {
+                $hour = strftime(' %I', $date);
+                $hour = str_replace($search, '', $hour);
+                $replace['II'] = ltrim($hour);
+            }
+            $userdate = strtr($userdate, $replace);
+        }
+
+        return $userdate;
+    }
+
+    /**
+     * check_date_fixes
+     */
+    protected function check_date_fixes() {
+
+        if (! $dateformat = $this->customdatefmt) {
+            if (! $dateformat = $this->moodledatefmt) {
+                $dateformat = 'strftimerecent'; // default: 11 Nov, 10:12
+            }
+            $dateformat = get_string($dateformat);
+        }
+
+        $date = strftime($dateformat, time());
+
+        // set the $year, $month and $day characters for CJK languages
+        list($year, $month, $day) = $this->get_date_chars();
+
+        if ($day && ! preg_match("/[0-9]+$year/", $date)) {
+            $this->fixyearchar = true;
+        }
+        if ($day && ! preg_match("/[0-9]+$month/", $date)) {
+            $this->fixmonthchar = true;
+        }
+        if ($day && ! preg_match("/[0-9]+$day/", $date)) {
+            $this->fixdaychar = true;
+        }
+    }
+
+    /**
+     * get_date_chars
+     *
+     * @return array($year, $month, $day)
+     */
+    protected function get_date_chars() {
+        switch (substr(current_language(), 0, 2)) {
+            case 'ja': return array('年', '月', '日'); // Japanese
+            case 'ko': return array('년', '월', '일'); // Korean
+            case 'zh': return array('年', '月', '日'); // Chinese
+            default  : return array('',  '',   '');
+        }
+    }
+
+    /**
+     * Saves intial criteria records with required parameters set up.
+     *
+     * @param array $params Values from the form or any other array.
+     */
+    public function save($params = array()) {
+        // reduce any multi-select elements to a comma separated list
+        foreach ($this->get_multiselect_element_names() as $name) {
+            if (array_key_exists($name, $params) && is_array($params[$name])) {
+                $params[$name] = array_filter($params[$name]);
+                $params[$name] = implode(', ', $params[$name]);
+            }
+        }
+        // Continue with parent save method
+        parent::save($params);
     }
 
     /**

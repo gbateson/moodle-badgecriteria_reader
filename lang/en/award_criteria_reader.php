@@ -9,27 +9,39 @@ $string['criteria_10_help'] = 'This criteria allows a badge to be awarded to use
 
 $string['criteria_descr_short10'] = 'Reached <strong>{$a}</strong> of: ';
 $string['criteria_descr_single_short10'] = 'Reading achievement: ';
-$string['criteria_descr_single_10'] = 'The following Reading goal has been reached:';
-$string['criteria_descr_10'] = '<strong>{$a}</strong> of the following Reading goal has yet to be reached:';
+$string['criteria_descr_single_10'] = 'Their reading achievements match the following criteria:';
+$string['criteria_descr_10'] = '<strong>{$a}</strong> of the following criteria are yet to be met:';
 
 $string['readinggoal_min'] = 'Minimum reading goal';
 $string['readinggoal_min_help'] = 'The minimum number of words that must be read in order to earn this badge.';
 $string['readinggoal_max'] = 'Maximum reading goal';
 $string['readinggoal_max_help'] = 'The maximum number of words that can be read in order to earn this badge. Note that the badge will NOT be awarded, if the number of words exceeds this amount.';
 
-$string['absolutetime_start'] = 'Absolute start time';
-$string['absolutetime_start_help'] = 'The date and time at which the reading period starts.';
-$string['absolutetime_end'] = 'Absolute end time';
-$string['absolutetime_end_help'] = 'The date and time at which the reading period ends.';
-$string['relativetime_start'] = 'Relative start time';
-$string['relativetime_start_help'] = 'The time after enrolment at which a user\'s reading period starts.';
-$string['relativetime_end'] = 'Relative end time';
-$string['relativetime_end_help'] = 'The time after enrolment at which a user\'s reading period ends.';
+$string['readinggoal_range'] = 'Read {$a->min} to {$a->max} words.';
+$string['wordcount_range'] = 'Books of {$a->min} to {$a->max} words in length.';
+$string['fixedtime_range'] = 'From {$a->start} to {$a->end}.';
+$string['relativetime_range'] = 'From {$a->start} to {$a->end} after enrolment.';
 
-$string['enrolmenttype'] = 'Enrolment type';
-$string['enrolmenttype_help'] = 'The type of enrolment to which the relative start and end times relate.';
-$string['enrolmenttype_site'] = 'Site enrolment';
-$string['enrolmenttype_course'] = 'Course enrolment';
+$string['book_range'] = 'Book name includes "{$a->include}", but excludes "{$a->exclude}".';
+$string['username_range'] = 'Username includes "{$a->include}", but excludes "{$a->exclude}".';
+$string['activity_range'] = 'Activity name includes "{$a->include}", but excludes "{$a->exclude}".';
+$string['course_range'] = 'Course name includes "{$a->include}", but excludes "{$a->exclude}".';
+$string['category_range'] = 'Course category name includes "{$a->include}", but excludes "{$a->exclude}".';
+
+$string['fixedtime_start'] = 'Fixed start time';
+$string['fixedtime_start_help'] = 'The date and time at which the reading period starts.';
+$string['fixedtime_end'] = 'Fixed end time';
+$string['fixedtime_end_help'] = 'The date and time at which the reading period ends.';
+
+$string['relativetime_start'] = 'Relative start time';
+$string['relativetime_start_help'] = 'The time, relative to a user\'s enrolment, at which the reading period starts.';
+$string['relativetime_end'] = 'Relative end time';
+$string['relativetime_end_help'] = 'The time, relative to a user\'s enrolment, at which the reading period ends.';
+
+$string['enrolment_type'] = 'Enrolment type';
+$string['enrolment_type_help'] = 'The type of enrolment to which the relative start and end times relate.';
+$string['enrolment_type_site'] = 'Site enrolment';
+$string['enrolment_type_course'] = 'Course enrolment';
 
 $string['wordcount_min'] = 'Minimum word count';
 $string['wordcount_min_help'] = 'The minimum number of words a book must have in order to contribute to the reading total.';
@@ -38,13 +50,13 @@ $string['wordcount_max_help'] = 'The maximum number of words a book can have in 
 
 $string['difficulty_any'] = 'Any level';
 $string['difficulty_short'] = 'RL {$a}';
-$string['difficulties'] = 'Reading level';
-$string['difficulties_help'] = 'If any values are selected here, the reading goal will be limited to books of the selected reading levels. If no individual reading levels are selected, books of ALL reading levels will contribute to the reading total.';
+$string['difficulties_list'] = 'Reading level';
+$string['difficulties_list_help'] = 'If any values are selected here, the reading goal will be limited to books of the selected reading levels. If no individual reading levels are selected, books of ALL reading levels will contribute to the reading total.';
 $string['publisher_any'] = 'Any publisher';
-$string['publishers'] = 'Publishers';
-$string['publishers_help'] = 'If any values are selected here, the reading goal will be limited to books by the selected publishers. If no individual publishers are selected, books by ALL publishers will contribute to the reading total.';
-$string['genres'] = 'Genres';
-$string['genres_help'] = 'If any values are selected here, the reading goal will be limited to books of the selected genres. If no individual genres are selected, books of ALL genres will contribute to the reading total.';
+$string['publishers_list'] = 'Publishers';
+$string['publishers_list_help'] = 'If any values are selected here, the reading goal will be limited to books by the selected publishers. If no individual publishers are selected, books by ALL publishers will contribute to the reading total.';
+$string['genres_list'] = 'Genres';
+$string['genres_list_help'] = 'If any values are selected here, the reading goal will be limited to books of the selected genres_list. If no individual genres_list are selected, books of ALL genres_list will contribute to the reading total.';
 
 $string['activityfilters'] = 'Activity name filters';
 $string['bookfilters'] = 'Book filters';
