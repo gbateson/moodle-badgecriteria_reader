@@ -7,26 +7,26 @@
 $string['criteria_10'] = 'Reading achievement';
 $string['criteria_10_help'] = 'This criteria allows a badge to be awarded to users who achieve a specified reading goal. Restrictions on start and end dates, as well as on publisher and reading level can also be specified.';
 
-$string['criteria_descr_short10'] = 'Reached <strong>{$a}</strong> of: ';
+$string['criteria_descr_short10'] = 'Meet <strong>{$a}</strong> of the following conditions: ';
 $string['criteria_descr_single_short10'] = 'Reading achievement: ';
-$string['criteria_descr_single_10'] = 'Their reading achievements match the following criteria:';
-$string['criteria_descr_10'] = '<strong>{$a}</strong> of the following criteria are yet to be met:';
+$string['criteria_descr_single_10'] = 'Reading achievements meeting the following conditions:';
+$string['criteria_descr_10'] = 'Reading achievement meeting <strong>{$a}</strong> of the following conditions:';
 
 $string['readinggoal_min'] = 'Minimum reading goal';
 $string['readinggoal_min_help'] = 'The minimum number of words that must be read in order to earn this badge.';
 $string['readinggoal_max'] = 'Maximum reading goal';
 $string['readinggoal_max_help'] = 'The maximum number of words that can be read in order to earn this badge. Note that the badge will NOT be awarded, if the number of words exceeds this amount.';
 
-$string['readinggoal_range'] = 'Read {$a->min} to {$a->max} words.';
-$string['wordcount_range'] = 'Books of {$a->min} to {$a->max} words in length.';
-$string['fixedtime_range'] = 'From {$a->start} to {$a->end}.';
-$string['relativetime_range'] = 'From {$a->start} to {$a->end} after enrolment.';
+$string['readinggoal_range'] = 'Reading a total of {$a->min} to {$a->max} words';
+$string['wordcount_range'] = 'in books of {$a->min} to {$a->max} words in length';
+$string['fixedtime_range'] = 'from {$a->start} to {$a->end}';
+$string['relativetime_range'] = 'from {$a->start} to {$a->end} after enrolment';
 
-$string['book_range'] = 'Book name includes "{$a->include}", but excludes "{$a->exclude}".';
-$string['username_range'] = 'Username includes "{$a->include}", but excludes "{$a->exclude}".';
-$string['activity_range'] = 'Activity name includes "{$a->include}", but excludes "{$a->exclude}".';
-$string['course_range'] = 'Course name includes "{$a->include}", but excludes "{$a->exclude}".';
-$string['category_range'] = 'Course category name includes "{$a->include}", but excludes "{$a->exclude}".';
+$string['book_range'] = 'for books whose name includes "{$a->include}", but excludes "{$a->exclude}"';
+$string['username_range'] = 'Username includes "{$a->include}", but excludes "{$a->exclude}"';
+$string['activity_range'] = 'in Reading activities whose name includes "{$a->include}", but excludes "{$a->exclude}"';
+$string['course_range'] = 'in courses whose name includes "{$a->include}", but excludes "{$a->exclude}"';
+$string['category_range'] = 'in course categories whose name includes "{$a->include}", but excludes "{$a->exclude}"';
 
 $string['fixedtime_start'] = 'Fixed start time';
 $string['fixedtime_start_help'] = 'The date and time at which the reading period starts.';

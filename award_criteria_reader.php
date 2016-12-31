@@ -50,6 +50,9 @@ class award_criteria_reader extends award_criteria {
                                     'course',       // "include" and "exclude"
                                     'category');    // "include" and "exclude"
 
+    /** array($name => array($type)) criteria params */
+    protected $criteria = null;
+
     protected $fixmonth = true;
     protected $fixday   = true;
     protected $fixhour  = true;
@@ -61,9 +64,15 @@ class award_criteria_reader extends award_criteria {
     protected $customdatefmt = '%Y %b %d (%a) %H:%M';
     protected $moodledatefmt = 'strftimerecent';
 
+    const REMOVE_NONE  = 0;
+    const REMOVE_DAY   = 1;
+    const REMOVE_MONTH = 2;
+    const REMOVE_YEAR  = 4;
+
     const TEXT_NUM_SIZE = 10;
     const MULTI_SELECT_SIZE = 5;
     const MAX_READING_LEVEL = 15;
+    const ENROLMENT_TYPE_NONE = 0;
     const ENROLMENT_TYPE_SITE = 1;
     const ENROLMENT_TYPE_COURSE = 2;
 
@@ -72,9 +81,24 @@ class award_criteria_reader extends award_criteria {
      */
     public function __construct($params) {
         parent::__construct($params);
+
+        // convert multiselect form elements to arrays
         foreach ($this->get_multiselect_element_names() as $name) {
             if (isset($this->params[$name]) && is_string($this->params[$name])) {
                 $this->params[$name] = explode(',', $this->params[$name]);
+            }
+        }
+
+        // set up $criteria[$name][$type] array
+        $this->criteria = array();
+        foreach ($this->params as $type => $values) {
+            foreach ($values as $name => $value) {
+                if ($value) {
+                    if (empty($this->criteria[$name])) {
+                        $this->criteria[$name] = array();
+                    }
+                    $this->criteria[$name][$type] = $value;
+                }
             }
         }
     }
@@ -88,13 +112,12 @@ class award_criteria_reader extends award_criteria {
 
         $none = false;
         $plugin = 'badges';
-        $strman = get_string_manager();
 
-        $dateoptions = array('optional' => true);
-        $textoptions = array('size' => self::TEXT_NUM_SIZE);
-        $selectoptions = array('multiple' => 'multiple', 'size' => self::MULTI_SELECT_SIZE);
-        $durationoptions = array('optional' => true, 'defaultunit' => 86400);
-        $enrolmentoptions = $this->get_enrolment_types($plugin);
+        $dateparams = array('optional' => true);
+        $textparams = array('size' => self::TEXT_NUM_SIZE);
+        $listparams = array('multiple' => 'multiple', 'size' => self::MULTI_SELECT_SIZE);
+        $durationparams = array('optional' => true, 'defaultunit' => 86400);
+        $enrolmentparams = $this->get_enrolment_types($plugin);
 
         $difficulties = array();
         for ($i=0; $i<=self::MAX_READING_LEVEL; $i++) {
@@ -104,13 +127,16 @@ class award_criteria_reader extends award_criteria {
                 $difficulties[$i] = get_string('difficulty_short', $plugin, $i);
             }
         }
-        if ($publishers = $DB->get_records_sql('SELECT DISTINCT publisher FROM {reader_books} WHERE publisher <> ?', array('Extra points'))) {
+
+        $publishers = 'SELECT DISTINCT publisher FROM {reader_books} WHERE publisher <> ?';
+        if ($publishers = $DB->get_records_sql($publishers, array('Extra points'))) {
             $publishers = array_keys($publishers);
             $publishers = array_combine($publishers, $publishers);
         } else {
             $publishers = array();
         }
         $publishers = array_merge(array('' => get_string('publisher_any', $plugin)), $publishers);
+
         $genres = mod_reader_renderer::valid_genres();
 
         //-----------------------------------------------------------------------------
@@ -122,19 +148,7 @@ class award_criteria_reader extends award_criteria {
         $mform->addHelpButton($name, 'criteria_' . $this->criteriatype, 'badges');
         //-----------------------------------------------------------------------------
 
-        $name = 'readinggoal_min';
-        $label = get_string($name, $plugin);
-        $mform->addElement('text', $name, $label, $textoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_INT);
-        $this->set_default($mform, 'readinggoal', 'min');
-
-        $name = 'readinggoal_max';
-        $label = get_string($name, $plugin);
-        $mform->addElement('text', $name, $label, $textoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_INT);
-        $this->set_default($mform, 'readinggoal', 'max');
+        $this->add_fields_string_range($mform, $plugin, $textparams, 'readinggoal');
 
         //-----------------------------------------------------------------------------
         $name = 'timing';
@@ -142,36 +156,9 @@ class award_criteria_reader extends award_criteria {
         $mform->addElement('header', $name, $label);
         //-----------------------------------------------------------------------------
 
-        $name = 'fixedtime_start';
-        $label = get_string($name, $plugin);
-        $mform->addElement('date_time_selector', $name, $label, $dateoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $this->set_default($mform, 'fixedtime', 'start');
-
-        $name = 'fixedtime_end';
-        $label = get_string($name, $plugin);
-        $mform->addElement('date_time_selector', $name, $label, $dateoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $this->set_default($mform, 'fixedtime', 'end');
-
-        $name = 'enrolment_type';
-        $label = get_string($name, $plugin);
-        $mform->addElement('select', $name, $label, $enrolmentoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_INT);
-        $this->set_default($mform, 'enrolment', 'type');
-
-        $name = 'relativetime_start';
-        $label = get_string($name, $plugin);
-        $mform->addElement('duration', $name, $label, $durationoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $this->set_default($mform, 'relativetime', 'start');
-
-        $name = 'relativetime_end';
-        $label = get_string($name, $plugin);
-        $mform->addElement('duration', $name, $label, $durationoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $this->set_default($mform, 'relativetime', 'end');
+        $this->add_field_date_range($mform, $plugin, $dateparams, 'fixedtime', 'date_time_selector');
+        $this->add_field_select($mform, $plugin, null, $enrolmentparams, 'enrolment', 'type', PARAM_INT);
+        $this->add_field_date_range($mform, $plugin, $durationparams, 'relativetime', 'duration');
 
         //-----------------------------------------------------------------------------
         $name = 'bookfilters';
@@ -179,49 +166,19 @@ class award_criteria_reader extends award_criteria {
         $mform->addElement('header', $name, $label);
         //-----------------------------------------------------------------------------
 
-        $name = 'wordcount_min';
-        $label = get_string($name, $plugin);
-        $mform->addElement('text', $name, $label, $textoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_INT);
-        $this->set_default($mform, 'wordcount', 'min');
+        $this->add_fields_string_range($mform, $plugin, $textparams, 'wordcount');
 
-        $name = 'wordcount_max';
-        $label = get_string($name, $plugin);
-        $mform->addElement('text', $name, $label, $textoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_INT);
-        $this->set_default($mform, 'wordcount', 'max');
+        $this->add_field_select($mform, $plugin, $listparams, $publishers,   'publishers',   'list', PARAM_TEXT);
+        $this->add_field_select($mform, $plugin, $listparams, $difficulties, 'difficulties', 'list', PARAM_INT);
+        $this->add_field_select($mform, $plugin, $listparams, $genres,       'genres',       'list', PARAM_ALPHA);
 
-        $name = 'publishers_list';
-        $label = get_string($name, $plugin);
-        $mform->addElement('select', $name, $label, $publishers, $selectoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_TEXT);
-        $this->set_default($mform, 'publishers', 'list');
-
-        $name = 'difficulties_list';
-        $label = get_string($name, $plugin);
-        $mform->addElement('select', $name, $label, $difficulties, $selectoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_INT);
-        $this->set_default($mform, 'difficulties', 'list');
-
-        $name = 'genres_list';
-        $label = get_string($name, $plugin);
-        $mform->addElement('select', $name, $label, $genres, $selectoptions);
-        $mform->addHelpButton($name, $name, $plugin);
-        $mform->setType($name, PARAM_TEXT);
-        $this->set_default($mform, 'genres', 'list');
-
-        $this->add_field_include_exclude($mform, $textoptions, $plugin, 'book', 'include');
-        $this->add_field_include_exclude($mform, $textoptions, $plugin, 'book', 'exclude');
+        $this->add_fields_include_exclude($mform, $plugin, $textparams, 'book');
 
         //-----------------------------------------------------------------------------
-        $this->add_section_filters($mform, $textoptions, $plugin, 'username');
-        $this->add_section_filters($mform, $textoptions, $plugin, 'activity');
-        $this->add_section_filters($mform, $textoptions, $plugin, 'course');
-        $this->add_section_filters($mform, $textoptions, $plugin, 'category');
+        $this->add_section_include_exclude($mform, $plugin, $textparams, 'username');
+        $this->add_section_include_exclude($mform, $plugin, $textparams, 'activity');
+        $this->add_section_include_exclude($mform, $plugin, $textparams, 'course');
+        $this->add_section_include_exclude($mform, $plugin, $textparams, 'category');
         //-----------------------------------------------------------------------------
 
         return array($none, get_string('noparamstoadd', 'badges'));
@@ -260,6 +217,7 @@ class award_criteria_reader extends award_criteria {
      */
     protected function get_enrolment_types($plugin, $type=null) {
         $types = array(
+            self::ENROLMENT_TYPE_NONE => get_string('none'),
             self::ENROLMENT_TYPE_SITE => get_string('enrolment_type_site', $plugin),
             self::ENROLMENT_TYPE_COURSE => get_string('enrolment_type_course', $plugin)
         );
@@ -269,32 +227,93 @@ class award_criteria_reader extends award_criteria {
         if (array_key_exists($type, $types)) {
             return $types[$type];
         }
-        return 'oops - '.$type; // shouldn't happen !!
+        return $type; // unknown $type - shouldn't happen !!
     }
 
     /**
-     * add a filter section to the $mform
+     * add a filter section to $mform
      *
      * @return string
      */
-    protected function add_section_filters($mform, $textoptions, $plugin, $name) {
+    protected function add_section_include_exclude($mform, $plugin, $displayparams, $name) {
         $header = $name.'filters';
         $mform->addElement('header', $header, get_string($header, $plugin));
-        $this->add_field_include_exclude($mform, $textoptions, $plugin, $name, 'include');
-        $this->add_field_include_exclude($mform, $textoptions, $plugin, $name, 'exclude');
+        $this->add_fields_include_exclude($mform, $plugin, $displayparams, $name);
     }
 
     /**
-     * add an include/exclude field to the $mform
+     * add include/exclude fields to $mform
      *
      * @return string
      */
-    protected function add_field_include_exclude($mform, $textoptions, $plugin, $name, $type) {
+    protected function add_fields_include_exclude($mform, $plugin, $displayparams, $name) {
+        $this->add_field_string($mform, $plugin, $displayparams, $name, 'include', PARAM_TEXT, get_string('include', $plugin));
+        $this->add_field_string($mform, $plugin, $displayparams, $name, 'exclude', PARAM_TEXT, get_string('exclude', $plugin));
+    }
+
+    /**
+     * add a filter section to $mform
+     *
+     * @return string
+     */
+    protected function add_fields_string_range($mform, $plugin, $displayparams, $name) {
+        $this->add_field_string($mform, $plugin, $displayparams, $name, 'min', PARAM_INT);
+        $this->add_field_string($mform, $plugin, $displayparams, $name, 'max', PARAM_INT);
+    }
+
+    /**
+     * add a single text string field to $mform
+     *
+     * @return string
+     */
+    protected function add_field_string($mform, $plugin, $displayparams, $name, $type, $PARAM_TYPE, $label='') {
         $elementname = $name.'_'.$type;
-        $label = get_string($type, $plugin);
-        $mform->addElement('text', $elementname, $label, $textoptions);
-        $mform->addHelpButton($elementname, $type, $plugin);
-        $mform->setType($elementname, PARAM_TEXT);
+        if ($label=='') {
+            $label = get_string($elementname, $plugin);
+            $helpstring = $elementname; // e.g. readinggoal_min
+        } else {
+            $helpstring = $type; // e.g. "include", "exclude"
+        }
+        $mform->addElement('text', $elementname, $label, $displayparams);
+        $mform->addHelpButton($elementname, $helpstring, $plugin);
+        $mform->setType($elementname, $PARAM_TYPE);
+        $this->set_default($mform, $name, $type);
+    }
+
+    /**
+     * add a single list field to $mform
+     *
+     * @return string
+     */
+    protected function add_field_select($mform, $plugin, $displayparams, $options, $name, $type, $PARAM_TYPE) {
+        $elementname = $name.'_'.$type;
+        $label = get_string($elementname, $plugin);
+        $mform->addElement('select', $elementname, $label, $options, $displayparams);
+        $mform->addHelpButton($elementname, $elementname, $plugin);
+        $mform->setType($elementname, $PARAM_TYPE);
+        $this->set_default($mform, $name, $type);
+    }
+
+    /**
+     * add a single list field to $mform
+     *
+     * @return string
+     */
+    protected function add_field_date_range($mform, $plugin, $displayparams, $name, $elementtype) {
+        $this->add_field_date($mform, $plugin, $displayparams, $name, 'start', $elementtype);
+        $this->add_field_date($mform, $plugin, $displayparams, $name, 'end',   $elementtype);
+    }
+
+    /**
+     * add a single list field to $mform
+     *
+     * @return string
+     */
+    protected function add_field_date($mform, $plugin, $displayparams, $name, $type, $elementtype) {
+        $elementname = $name.'_'.$type;
+        $label = get_string($elementname, $plugin);
+        $mform->addElement($elementtype, $elementname, $label, $displayparams);
+        $mform->addHelpButton($elementname, $elementname, $plugin);
         $this->set_default($mform, $name, $type);
     }
 
@@ -335,7 +354,7 @@ class award_criteria_reader extends award_criteria {
         // combine criteria groups
         $this->format_params_range($params, $plugin, 'readinggoal',  'min', 'max');
         $this->format_params_range($params, $plugin, 'wordcount',    'min', 'max');
-        $this->format_date_range($params, $plugin, 'fixedtime',    'start', 'end');
+        $this->format_date_range($params,   $plugin, 'fixedtime',    'start', 'end');
         $this->format_params_range($params, $plugin, 'relativetime', 'start', 'end');
         $this->format_params_range($params, $plugin, 'book',     'include', 'exclude');
         $this->format_params_range($params, $plugin, 'username', 'include', 'exclude');
@@ -376,12 +395,20 @@ class award_criteria_reader extends award_criteria {
      */
     protected function format_params_range(&$params, $plugin, $name, $type1, $type2) {
         if (array_key_exists($name, $params)) {
-            if (array_key_exists($type1, $params[$name]) && array_key_exists($type2, $params[$name])) {
+            $keep1 = (array_key_exists($type1, $params[$name]) && $params[$name][$type1]);
+            $keep2 = (array_key_exists($type2, $params[$name]) && $params[$name][$type2]);
+            if ($keep1 && $keep2) {
                 $params[$name]['range'] = (object)array(
                     $type1 => $params[$name][$type1],
                     $type2 => $params[$name][$type2]
                 );
+                $keep1 = false;
+                $keep2 = false;
+            }
+            if ($keep1==false) {
                 unset($params[$name][$type1]);
+            }
+            if ($keep2==false) {
                 unset($params[$name][$type2]);
             }
         }
@@ -407,37 +434,52 @@ class award_criteria_reader extends award_criteria {
             if (array_key_exists($type1, $params[$name])) {
                 $time1 = $params[$name][$type1];
                 $time1 = preg_replace('/[^0-9]+/', '', $time1);
+                $time1 = intval($time1);
             }
             if (array_key_exists($type2, $params[$name])) {
                 $time2 = $params[$name][$type2];
                 $time2 = preg_replace('/[^0-9]+/', '', $time2);
+                $time2 = intval($time2);
             }
 
-            $removetime1 = ($time1 && (strftime('%H:%M', $time1)=='00:00'));
-            $removetime2 = ($time2 && (strftime('%H:%M', $time2)=='23:55'));
-            $removetime = ($removetime1 && $removetime2);
-            $removedate = false;
+            $removedate = self::REMOVE_NONE;
+            if ($time1 && $time2) {
+                if (strftime('%Y', $time1)==strftime('%Y', $time2)) {
+                    $removedate |= self::REMOVE_YEAR;
+                    if (strftime('%m', $time1)==strftime('%m', $time2)) {
+                        $removedate |= self::REMOVE_MONTH;
+                        if (strftime('%d', $time1)==strftime('%d', $time2)) {
+                            $removedate |= self::REMOVE_DAY;
+                        }
+                    }
+                }
+            }
+
+            if ($removedate & self::REMOVE_DAY) {
+                $removetime1 = false;
+                $removetime2 = false;
+                $removetime  = false;
+            } else {
+                $removetime1 = ($time1 && (strftime('%H:%M', $time1)=='00:00'));
+                $removetime2 = ($time2 && (strftime('%H:%M', $time2)=='23:55'));
+                $removetime  = ($removetime1 && $removetime2);
+            }
 
             $date = '';
             if ($time1 && $time2) {
-                if (($time2 - $time1) < DAYSECS) {
-                    // the dates are less than 24 hours apart, so don't remove times ...
-                    $removetime = false;
-                    // ... but remove the finish date ;-)
-                    $removedate = true;
-                }
                 $time1 = $this->userdate($time1, $dateformat, $removetime);
                 $time2 = $this->userdate($time2, $dateformat, $removetime, $removedate);
             } else if ($time1) {
                 $time1 = $this->userdate($time1, $dateformat, $removetime1);
+                $time2 = '';
             } else if ($time2) {
+                $time1 = '';
                 $time2 = $this->userdate($time2, $dateformat, $removetime2);
             }
 
             $params[$name][$type1] = $time1;
             $params[$name][$type2] = $time2;
         }
-
         $this->format_params_range($params, $plugin, $name, $type1, $type2);
     }
 
@@ -450,7 +492,7 @@ class award_criteria_reader extends award_criteria {
      * @param boolean $removedate (optional, default = false)
      * @return string representation of $date
      */
-    protected function userdate($date, $format, $removetime, $removedate=false) {
+    protected function userdate($date, $format, $removetime, $removedate=self::REMOVE_NONE) {
 
         $current_language = substr(current_language(), 0, 2);
 
@@ -460,9 +502,19 @@ class award_criteria_reader extends award_criteria {
             $format = preg_replace($search, '', $format);
         }
 
-        if ($removedate) {
+        $search = '';
+        if ($removedate & self::REMOVE_YEAR) {
+            $search .= 'CgGyY';
+        }
+        if ($removedate & self::REMOVE_MONTH) {
+            $search .= 'bBhm';
+        }
+        if ($removedate & self::REMOVE_DAY) {
+            $search .= 'aAdejuw';
+        }
+        if ($search) {
             // http://php.net/manual/en/function.strftime.php
-            $search = '/[ :,\-\.\/]*[\[\{\(]*?%[AadejuwbBhmCgGyY][\)\}\]]?/';
+            $search = '/[ :,\-\.\/]*[\[\{\(]*?%['.$search.'][\)\}\]]?/';
             $format = preg_replace($search, '', $format);
         }
 
@@ -596,41 +648,8 @@ class award_criteria_reader extends award_criteria {
      */
     public function review($userid, $filtered = false) {
         global $DB;
-
-        // Users were already filtered by criteria completion, no checks required.
-        if ($filtered) {
-            return true;
-        }
-
-        $join = '';
-        $whereparts = array();
-        $sqlparams = array();
-        $rule = ($this->method == BADGE_CRITERIA_AGGREGATION_ANY) ? ' OR ' : ' AND ';
-
-        foreach ($this->params as $param) {
-            if (is_numeric($param['field'])) {
-                // This is a custom field.
-                $idx = count($whereparts) + 1;
-                $join .= " LEFT JOIN {user_info_data} uid{$idx} ON uid{$idx}.userid = u.id AND uid{$idx}.fieldid = :fieldid{$idx} ";
-                $sqlparams["fieldid{$idx}"] = $param['field'];
-                $whereparts[] = "uid{$idx}.id IS NOT NULL";
-            } else {
-                // This is a field from {user} table.
-                $whereparts[] = $DB->sql_isnotempty('u', "u.{$param['field']}", false, true);
-            }
-        }
-
-        $sqlparams['userid'] = $userid;
-
-        if ($whereparts) {
-            $where = " AND (" . implode($rule, $whereparts) . ")";
-        } else {
-            $where = '';
-        }
-        $sql = "SELECT 1 FROM {user} u " . $join . " WHERE u.id = :userid $where";
-        $overall = $DB->record_exists_sql($sql, $sqlparams);
-
-        return $overall;
+        list($sql, $params) = $this->get_sql_criteria($userid);
+        return $DB->record_exists_sql($sql, $params);
     }
 
     /**
@@ -640,30 +659,197 @@ class award_criteria_reader extends award_criteria {
      * @return array list($join, $where, $params)
      */
     public function get_completed_criteria_sql() {
-        global $DB;
+        list($sql, $params) = $this->get_sql_criteria();
+        $sql = " LEFT JOIN ($sql) bcr ON u.id = bcr.userid";
+        return array($sql, ' AND bcr.userid IS NOT NULL', $params);
+    }
 
-        $join = '';
-        $whereparts = array();
-        $params = array();
-        $rule = ($this->method == BADGE_CRITERIA_AGGREGATION_ANY) ? ' OR ' : ' AND ';
+    /**
+     * Returns array with sql code and parameters returning all ids
+     * of users who meet this particular criterion.
+     *
+     * @return array list($sql, $where, $params)
+     */
+    protected function get_sql_criteria($userid=0) {
 
-        foreach ($this->params as $param) {
-            if (is_numeric($param['field'])) {
-                // This is a custom field.
-                $idx = count($whereparts);
-                $join .= " LEFT JOIN {user_info_data} uid{$idx} ON uid{$idx}.userid = u.id AND uid{$idx}.fieldid = :fieldid{$idx} ";
-                $params["fieldid{$idx}"] = $param['field'];
-                $whereparts[] = "uid{$idx}.id IS NOT NULL";
-            } else {
-                $whereparts[] = $DB->sql_isnotempty('u', "u.{$param['field']}", false, true);
+        $select = array('ra.userid',
+                        'SUM(rb.words) AS sumwords');
+        $from   = array('{reader_attempts} ra',
+                        '{reader_books} rb ON ra.bookid = rb.id');
+        $where  = array('ra.deleted = :ra_deleted',
+                        'ra.passed = :ra_passed');
+        $group  = array('ra.userid');
+        $having = array();
+        $params = array('ra_deleted' => 0, 'ra_passed' => 'true');
+
+        if ($userid) {
+            $where[] = 'ra.userid = :ra_userid';
+            $params['ra_userid'] = $userid;
+        }
+        $where = implode(' AND ', $where);
+        $where  = array("($where)");
+
+        $this->get_sql_number($having, $params, $this->criteria, 'readinggoal', 'min', 'max', 'sumwords');
+        $this->get_sql_number($where,  $params, $this->criteria, 'wordcount',   'min', 'max', 'rb.words');
+        $this->get_sql_number($where,  $params, $this->criteria, 'fixedtime', 'start', 'end', 'ra.timefinish');
+
+        $name = 'relativetime';
+        if (! empty($this->criteria[$name])) {
+        }
+
+        $this->get_sql_list($where, $params, $this->criteria, 'publishers',   'list', 'rb.publisher');
+        $this->get_sql_list($where, $params, $this->criteria, 'difficulties', 'list', 'rb.difficulty');
+        $this->get_sql_list($where, $params, $this->criteria, 'genres',       'list', 'rb.genre');
+
+        $this->get_sql_string($where, $params, $this->criteria, 'book', 'include', 'exclude', 'rb.name');
+        $require_user = $this->get_sql_string($where, $params, $this->criteria, 'username', 'include', 'exclude', 'u.username');
+        $require_activity = $this->get_sql_string($where, $params, $this->criteria, 'activity', 'include', 'exclude', 'r.name');
+        $require_course = $this->get_sql_string($where, $params, $this->criteria, 'course', 'include', 'exclude', 'c.fullname');
+        $require_category = $this->get_sql_string($where, $params, $this->criteria, 'category', 'include', 'exclude', 'cc.name');
+
+        if ($require_user) {
+            $from[] = '{user} u ON ra.userid = u.id';
+        }
+        if ($require_activity || $require_course || $require_category) {
+            $from[] = '{reader} r ON ra.readerid = r.id';
+        }
+        if ($require_course || $require_category) {
+            $from[] = '{course} c ON r.course = c.id';
+        }
+        if ($require_category) {
+            $from[] = '{course_category} cc ON c.category = cc.id';
+        }
+
+        $AND = (($this->method==BADGE_CRITERIA_AGGREGATION_ANY) ? 'OR' : 'AND');
+        $JOIN = 'LEFT JOIN';
+
+        $select = implode(', ', $select);
+        $from   = implode(" $JOIN ", $from);
+        $where  = implode(" $AND ", $where);
+        $group  = implode(', ', $group);
+        $having = implode(" $AND ", $having);
+
+        $sql = "SELECT $select FROM $from WHERE $where GROUP BY $group HAVING $having";
+        return array($sql, $params);
+    }
+
+    /**
+     * get_sql_number
+     *
+     * @param array  $where  (passed by reference)
+     * @param array  $params (passed by reference)
+     * @param array  $criteria
+     * @param string $name, e.g. "readinggoal", "wordcount", "fixedtime"
+     * @param string $type1, e.g. "min", "start"
+     * @param string $type2, e.g. "max", "end"
+     * @param string $field
+     * @return boolean TRUE if $from, $where, $params were updated; otherwise FALSE
+     */
+    protected function get_sql_number(&$where, &$params, $criteria, $name, $type1, $type2, $field) {
+        $numberwhere = array();
+        $numberparams = array();
+        if (! empty($criteria[$name])) {
+            if (! empty($criteria[$name][$type1])) {
+                $alias = $name.'_'.$type1;
+                $numberwhere[] = "$field >= :$alias";
+                $numberparams[$alias] = $criteria[$name][$type1];
+            }
+            if (! empty($criteria[$name][$type2])) {
+                $alias = $name.'_'.$type2;
+                $numberwhere[] = "$field <= :$alias";
+                $numberparams[$alias] = $criteria[$name][$type2];
+                $result = true;
             }
         }
-
-        if ($whereparts) {
-            $where = " AND (" . implode($rule, $whereparts) . ")";
+        if ($count = count($numberwhere)) {
+            if ($count==1) {
+                $where[] = reset($numberwhere);
+            } else {
+                $where[] = '('.implode(' AND ', $numberwhere).')';
+            }
+            $params = array_merge($params, $numberparams);
+            $result = true;
         } else {
-            $where = '';
+            $result = false;
         }
-        return array($join, $where, $params);
+        return $result;
+    }
+
+    /**
+     * get_sql_string
+     *
+     * @param array  $where  (passed by reference)
+     * @param array  $params (passed by reference)
+     * @param array  $criteria
+     * @param string $name, e.g. "username", "(book)name"
+     * @param string $type1 e.g. "include"
+     * @param string $type2 e.g. "exclude"
+     * @param string $field
+     * @return boolean TRUE if $from, $where, $params were updated; otherwise FALSE
+     */
+    protected function get_sql_string(&$where, &$params, $criteria, $name, $type1, $type2, $field) {
+        global $DB;
+        $stringwhere = array();
+        $stringparams = array();
+        if (! empty($criteria[$name])) {
+            if (! empty($criteria[$name][$type1])) {
+                $alias = $name.'_'.$type1;
+                $stringwhere[] = $DB->sql_like($field, ":$alias");
+                $stringparams[$alias] = '%'.$criteria[$name][$type1].'%';
+            }
+            if (! empty($criteria[$name][$type2])) {
+                $alias = $name.'_'.$type2;
+                $stringwhere[] = $DB->sql_like($field, ":$alias", false, false, true);
+                $stringparams[$alias] = '%'.$criteria[$name][$type2].'%';
+            }
+        }
+        if ($count = count($stringwhere)) {
+            if ($count==1) {
+                $where[] = reset($stringwhere);
+            } else {
+                $where[] = '('.implode(' AND ', $stringwhere).')';
+            }
+            $params = array_merge($params, $stringparams);
+            $result = true;
+        } else {
+            $result = false;
+        }
+        return $result;
+    }
+
+    /**
+     * get_sql_list
+     *
+     * @param array  $where  (passed by reference)
+     * @param array  $params (passed by reference)
+     * @param array  $criteria
+     * @param string $name, e.g. "publishers", "difficuulties", or "genres"
+     * @param string $type, e.g. "list"
+     * @param string $field
+     * @return boolean TRUE if $from, $where, $params were updated; otherwise FALSE
+     */
+    protected function get_sql_list(&$where, &$params, $criteria, $name, $type, $field) {
+        global $DB;
+        $listwhere = '';
+        $listparams = array();
+        if (! empty($criteria[$name])) {
+            if (! empty($criteria[$name][$type])) {
+                $list = $criteria[$name][$type];
+                $list = explode(',', $list);
+                $list = array_filter($list);
+                if (! empty($list)) {
+                    $list = $DB->get_in_or_equal($list, SQL_PARAMS_NAMED, $name);
+                    list($listwhere, $listparams) = $list;
+                }
+            }
+        }
+        if ($listwhere) {
+            $where[] = "$field $listwhere";
+            $params = array_merge($params, $listparams);
+            $result = true;
+        } else {
+            $result = false;
+        }
+        return $result;
     }
 }
