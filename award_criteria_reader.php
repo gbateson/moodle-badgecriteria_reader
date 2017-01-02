@@ -702,13 +702,16 @@ class award_criteria_reader extends award_criteria {
         $this->get_sql_list($where, $params, $this->criteria, 'genres',       'list', 'rb.genre');
 
         $this->get_sql_string($where, $params, $this->criteria, 'book', 'include', 'exclude', 'rb.name');
-        $require_user = $this->get_sql_string($where, $params, $this->criteria, 'username', 'include', 'exclude', 'u.username');
+        $require_user = $this->get_sql_string($where, $params, $this->criteria, 'username', 'include', 'exclude', 'ub.username');
         $require_activity = $this->get_sql_string($where, $params, $this->criteria, 'activity', 'include', 'exclude', 'r.name');
         $require_course = $this->get_sql_string($where, $params, $this->criteria, 'course', 'include', 'exclude', 'c.fullname');
         $require_category = $this->get_sql_string($where, $params, $this->criteria, 'category', 'include', 'exclude', 'cc.name');
 
         if ($require_user) {
-            $from[] = '{user} u ON ra.userid = u.id';
+            // give this table an alias other than "u", in order to
+            // avoid a clash with the "u" alias that is added by
+            // the method calling "get_completed_criteria_sql"
+            $from[] = '{user} ub ON ra.userid = ub.id';
         }
         if ($require_activity || $require_course || $require_category) {
             $from[] = '{reader} r ON ra.readerid = r.id';
