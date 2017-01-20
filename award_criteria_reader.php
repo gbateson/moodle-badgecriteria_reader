@@ -746,36 +746,24 @@ class award_criteria_reader extends award_criteria {
      * @param string $type1, e.g. "min", "start"
      * @param string $type2, e.g. "max", "end"
      * @param string $field
-     * @return boolean TRUE if $from, $where, $params were updated; otherwise FALSE
+     * @return boolean TRUE if $where, $params were updated; otherwise FALSE
      */
     protected function get_sql_number(&$where, &$params, $criteria, $name, $type1, $type2, $field) {
-        $numberwhere = array();
-        $numberparams = array();
+        $localwhere = array();
+        $localparams = array();
         if (! empty($criteria[$name])) {
             if (! empty($criteria[$name][$type1])) {
                 $alias = $name.'_'.$type1;
-                $numberwhere[] = "$field >= :$alias";
-                $numberparams[$alias] = $criteria[$name][$type1];
+                $localwhere[] = "$field >= :$alias";
+                $localparams[$alias] = $criteria[$name][$type1];
             }
             if (! empty($criteria[$name][$type2])) {
                 $alias = $name.'_'.$type2;
-                $numberwhere[] = "$field <= :$alias";
-                $numberparams[$alias] = $criteria[$name][$type2];
-                $result = true;
+                $localwhere[] = "$field <= :$alias";
+                $localparams[$alias] = $criteria[$name][$type2];
             }
         }
-        if ($count = count($numberwhere)) {
-            if ($count==1) {
-                $where[] = reset($numberwhere);
-            } else {
-                $where[] = '('.implode(' AND ', $numberwhere).')';
-            }
-            $params = array_merge($params, $numberparams);
-            $result = true;
-        } else {
-            $result = false;
-        }
-        return $result;
+        return $this->get_sql_result($where, $params, $localwhere, $localparams);
     }
 
     /**
@@ -788,36 +776,25 @@ class award_criteria_reader extends award_criteria {
      * @param string $type1 e.g. "include"
      * @param string $type2 e.g. "exclude"
      * @param string $field
-     * @return boolean TRUE if $from, $where, $params were updated; otherwise FALSE
+     * @return boolean TRUE if $where, $params were updated; otherwise FALSE
      */
     protected function get_sql_string(&$where, &$params, $criteria, $name, $type1, $type2, $field) {
         global $DB;
-        $stringwhere = array();
-        $stringparams = array();
+        $localwhere = array();
+        $localparams = array();
         if (! empty($criteria[$name])) {
             if (! empty($criteria[$name][$type1])) {
                 $alias = $name.'_'.$type1;
-                $stringwhere[] = $DB->sql_like($field, ":$alias");
-                $stringparams[$alias] = '%'.$criteria[$name][$type1].'%';
+                $localwhere[] = $DB->sql_like($field, ":$alias");
+                $localparams[$alias] = '%'.$criteria[$name][$type1].'%';
             }
             if (! empty($criteria[$name][$type2])) {
                 $alias = $name.'_'.$type2;
-                $stringwhere[] = $DB->sql_like($field, ":$alias", false, false, true);
-                $stringparams[$alias] = '%'.$criteria[$name][$type2].'%';
+                $localwhere[] = $DB->sql_like($field, ":$alias", false, false, true);
+                $localparams[$alias] = '%'.$criteria[$name][$type2].'%';
             }
         }
-        if ($count = count($stringwhere)) {
-            if ($count==1) {
-                $where[] = reset($stringwhere);
-            } else {
-                $where[] = '('.implode(' AND ', $stringwhere).')';
-            }
-            $params = array_merge($params, $stringparams);
-            $result = true;
-        } else {
-            $result = false;
-        }
-        return $result;
+        return $this->get_sql_result($where, $params, $localwhere, $localparams);
     }
 
     /**
@@ -829,12 +806,12 @@ class award_criteria_reader extends award_criteria {
      * @param string $name, e.g. "publishers", "difficuulties", or "genres"
      * @param string $type, e.g. "list"
      * @param string $field
-     * @return boolean TRUE if $from, $where, $params were updated; otherwise FALSE
+     * @return boolean TRUE if $where, $params were updated; otherwise FALSE
      */
     protected function get_sql_list(&$where, &$params, $criteria, $name, $type, $field) {
         global $DB;
-        $listwhere = '';
-        $listparams = array();
+        $localwhere = array();
+        $localparams = array();
         if (! empty($criteria[$name])) {
             if (! empty($criteria[$name][$type])) {
                 $list = $criteria[$name][$type];
@@ -842,13 +819,33 @@ class award_criteria_reader extends award_criteria {
                 $list = array_filter($list);
                 if (! empty($list)) {
                     $list = $DB->get_in_or_equal($list, SQL_PARAMS_NAMED, $name);
-                    list($listwhere, $listparams) = $list;
+                    list($list, $localparams) = $list;
+                    if ($list) {
+                        $localwhere[] = "$field $list";
+                    }
                 }
             }
         }
-        if ($listwhere) {
-            $where[] = "$field $listwhere";
-            $params = array_merge($params, $listparams);
+        return $this->get_sql_result($where, $params, $localwhere, $localparams);
+    }
+
+    /**
+     * get_sql_result
+     *
+     * @param array  $where  (passed by reference)
+     * @param array  $params (passed by reference)
+     * @param array  $localwhere
+     * @param array  $localparams
+     * @return boolean TRUE if $where, $params were updated; otherwise FALSE
+     */
+    protected function get_sql_result(&$where, &$params, $localwhere, $localparams) {
+        if ($count = count($localwhere)) {
+            if ($count==1) {
+                $where[] = reset($localwhere);
+            } else {
+                $where[] = '('.implode(' AND ', $localwhere).')';
+            }
+            $params = array_merge($params, $localparams);
             $result = true;
         } else {
             $result = false;
