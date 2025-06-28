@@ -428,6 +428,7 @@ class award_criteria_reader extends award_criteria {
         $time1 = 0;
         $time2 = 0;
         $dateformat = $this->customdatefmt;
+        $strftime = $this->get_strftime();
 
         if (array_key_exists($name, $params)) {
 
@@ -444,11 +445,11 @@ class award_criteria_reader extends award_criteria {
 
             $removedate = self::REMOVE_NONE;
             if ($time1 && $time2) {
-                if (strftime('%Y', $time1)==strftime('%Y', $time2)) {
+                if ($strftime('%Y', $time1)==$strftime('%Y', $time2)) {
                     $removedate |= self::REMOVE_YEAR;
-                    if (strftime('%m', $time1)==strftime('%m', $time2)) {
+                    if ($strftime('%m', $time1)==$strftime('%m', $time2)) {
                         $removedate |= self::REMOVE_MONTH;
-                        if (strftime('%d', $time1)==strftime('%d', $time2)) {
+                        if ($strftime('%d', $time1)==$strftime('%d', $time2)) {
                             $removedate |= self::REMOVE_DAY;
                         }
                     }
@@ -460,8 +461,8 @@ class award_criteria_reader extends award_criteria {
                 $removetime2 = false;
                 $removetime  = false;
             } else {
-                $removetime1 = ($time1 && (strftime('%H:%M', $time1)=='00:00'));
-                $removetime2 = ($time2 && (strftime('%H:%M', $time2)=='23:55'));
+                $removetime1 = ($time1 && ($strftime('%H:%M', $time1)=='00:00'));
+                $removetime2 = ($time2 && ($strftime('%H:%M', $time2)=='23:55'));
                 $removetime  = ($removetime1 && $removetime2);
             }
 
@@ -495,6 +496,7 @@ class award_criteria_reader extends award_criteria {
     protected function userdate($date, $format, $removetime, $removedate=self::REMOVE_NONE) {
 
         $current_language = substr(current_language(), 0, 2);
+        $strftime = $this->get_strftime();
 
         if ($removetime) {
             // http://php.net/manual/en/function.strftime.php
@@ -554,7 +556,7 @@ class award_criteria_reader extends award_criteria {
             $search = array(' 0', ' ');
             $replace = array();
             if ($fixmonth) {
-                $month = strftime(' %m', $date);
+                $month = $strftime(' %m', $date);
                 $month = str_replace($search, '', $month);
                 $replace['MM'] = ltrim($month);
             }
@@ -562,13 +564,13 @@ class award_criteria_reader extends award_criteria {
                 if ($current_language=='en') {
                     $day = date(' jS', $date);
                 } else {
-                    $day = strftime(' %d', $date);
+                    $day = $strftime(' %d', $date);
                     $day = str_replace($search, '', $day);
                 }
                 $replace['DD'] = ltrim($day);
             }
             if ($fixhour) {
-                $hour = strftime(' %I', $date);
+                $hour = $strftime(' %I', $date);
                 $hour = str_replace($search, '', $hour);
                 $replace['II'] = ltrim($hour);
             }
@@ -590,7 +592,8 @@ class award_criteria_reader extends award_criteria {
             $dateformat = get_string($dateformat);
         }
 
-        $date = strftime($dateformat, time());
+        $strftime = $this->get_strftime();
+        $date = $strftime($dateformat, time());
 
         // set the $year, $month and $day characters for CJK languages
         list($year, $month, $day) = $this->get_date_chars();
@@ -617,6 +620,18 @@ class award_criteria_reader extends award_criteria {
             case 'ko': return array('년', '월', '일'); // Korean
             case 'zh': return array('年', '月', '日'); // Chinese
             default  : return array('',  '',   '');
+        }
+    }
+
+    /**
+     * Get the preferred strftime function.
+     * In PHP 8.1, strftime is deprecated.
+     */
+    protected function get_strftime() {
+        if (class_exists('\\core_date') && method_exists('\\core_date', 'strftime')) {
+            return '\\core_date::strftime';
+        } else {
+            return 'strftime';
         }
     }
 

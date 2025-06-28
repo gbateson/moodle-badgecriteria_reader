@@ -29,5 +29,5 @@ $plugin->cron      = 0;
 $plugin->component = 'badgecriteria_reader';
 $plugin->maturity  = MATURITY_BETA; // ALPHA=50, BETA=100, RC=150, STABLE=200
 $plugin->requires  = 2012062500;    // Moodle 2.3
-$plugin->version   = 2018033107;
-$plugin->release   = '2018-03-31 (07)';
+$plugin->version   = 2025062908;
+$plugin->release   = '2025-06-29 (08)';
